@@ -146,7 +146,10 @@ impl From<[u8; 2]> for Instruction {
 
 impl Display for Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}, {}", self.opcode, self.reg, self.rm)
+        match self.direction {
+            Direction::ToReg => write!(f, "{} {}, {}", self.opcode, self.reg, self.rm),
+            Direction::ToRM => write!(f, "{} {}, {}", self.opcode, self.rm, self.reg),
+        }
     }
 }
 

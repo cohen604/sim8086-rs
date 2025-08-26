@@ -53,7 +53,8 @@ fn decode(file: &PathBuf) -> Result<Vec<Instruction>> {
     let (chunks, _remainder) = content.as_chunks::<2>();
     let mut decoded_instructions: Vec<Instruction> = Vec::new();
     for byte in chunks {
-        decoded_instructions.push(Instruction::from(*byte));
+        let instruction = Instruction::from(*byte);
+        decoded_instructions.push(instruction);
     }
 
     Ok(decoded_instructions)
