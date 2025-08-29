@@ -1,26 +1,31 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use std::fmt::Display;
 use tracing::error;
 
-use crate::move_operations::{AccToMem, ImmToReg, ImmToRm, MemToAcc, MoveInstruction, RmToFromReg};
+use crate::{
+    arithmetic_operations::{self, ArithmeticOperation},
+    move_operations::{AccToMem, ImmToReg, ImmToRm, MemToAcc, MoveInstruction, RmToFromReg},
+};
 
 pub type ByteIterator<'a> = std::slice::Iter<'a, u8>;
 
-pub trait Operation<T> {
-    fn parse_opcode_to_instruction(opcode: &u8, iter: &mut ByteIterator) -> Result<T>
+pub trait Operation {
+    fn parse_opcode_to_instruction(opcode: &u8, iter: &mut ByteIterator) -> Result<Self>
     where
-        T: Display;
+        Self: Display + Sized;
 }
 
 #[derive(Debug)]
 pub enum OpCode {
     Mov(MoveInstruction),
+    Arithmetic(ArithmeticOperation),
 }
 
 impl Display for OpCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let opcode_str = match self {
             OpCode::Mov(_) => "mov",
+            OpCode::Arithmetic(_) => "",
         };
         write!(f, "{}", opcode_str)
     }
@@ -34,6 +39,13 @@ impl OpCode {
             0xC6..=0xC7 => OpCode::Mov(MoveInstruction::ImmToRm),
             0xA0..=0xA1 => OpCode::Mov(MoveInstruction::MemToAcc),
             0xA2..=0xA3 => OpCode::Mov(MoveInstruction::AccToMem),
+            0x80..=0x83 => OpCode::Arithmetic(ArithmeticOperation::ImmToRem),
+            0x0..=0x3 | 0x28..=0x2B | 0x38..=0x3B => {
+                OpCode::Arithmetic(ArithmeticOperation::RmWithReg)
+            }
+            0x4..=0x5 | 0x2C..=0x2D | 0x3C..=0x3D => {
+                OpCode::Arithmetic(ArithmeticOperation::ImmToAcc)
+            }
             _ => {
                 error!("Unsupported opcode: {:02X}", opcode);
                 panic!("Unsupported opcode");
@@ -309,6 +321,56 @@ impl Rm {
             _ => unreachable!(),
         }
     }
+
+    pub fn parse(rm_byte: u8, width: &Width, mode: &Mode, iter: &mut ByteIterator) -> Result<Rm> {
+        match mode {
+            Mode::Memory => {
+                // Special case for direct address mode
+                if rm_byte == 0x6 {
+                    let displacement_lo = iter
+                        .next()
+                        .ok_or_else(|| anyhow!("Expected low byte of direct address"))?;
+                    let displacement_hi = iter
+                        .next()
+                        .ok_or_else(|| anyhow!("Expected high byte of direct address"))?;
+                    Ok(Rm::decode_memory_addressing(
+                        mode,
+                        rm_byte,
+                        Some(*displacement_lo),
+                        Some(*displacement_hi),
+                    ))
+                } else {
+                    Ok(Rm::decode_memory_addressing(mode, rm_byte, None, None))
+                }
+            }
+            Mode::Memory8BitDisplacement => {
+                let displacement_lo = iter
+                    .next()
+                    .ok_or_else(|| anyhow!("Expected displacement byte"))?;
+                Ok(Rm::decode_memory_addressing(
+                    mode,
+                    rm_byte,
+                    Some(*displacement_lo),
+                    None,
+                ))
+            }
+            Mode::Memory16BitDisplacement => {
+                let displacement_lo = iter
+                    .next()
+                    .ok_or_else(|| anyhow!("Expected low byte of displacement"))?;
+                let displacement_hi = iter
+                    .next()
+                    .ok_or_else(|| anyhow!("Expected high byte of displacement"))?;
+                Ok(Rm::decode_memory_addressing(
+                    mode,
+                    rm_byte,
+                    Some(*displacement_lo),
+                    Some(*displacement_hi),
+                ))
+            }
+            Mode::Register => Ok(Rm::decode_register_with_width(width, rm_byte)),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -324,6 +386,9 @@ pub enum OperandData {
     ImmToRm(ImmToRm),
     MemToAcc(MemToAcc),
     AccToMem(AccToMem),
+    AOImmToRm(arithmetic_operations::ImmToRm),
+    AORmWithReg(arithmetic_operations::RmWithReg),
+    AOImmToAcc(arithmetic_operations::ImmToAcc),
 }
 
 impl Display for OperandData {
@@ -334,6 +399,9 @@ impl Display for OperandData {
             OperandData::ImmToRm(data) => write!(f, "{}", data),
             OperandData::MemToAcc(data) => write!(f, "{}", data),
             OperandData::AccToMem(data) => write!(f, "{}", data),
+            OperandData::AOImmToRm(data) => write!(f, "{}", data),
+            OperandData::AORmWithReg(data) => write!(f, "{}", data),
+            OperandData::AOImmToAcc(data) => write!(f, "{}", data),
         }
     }
 }
@@ -384,6 +452,36 @@ pub fn decode_instructions(content: Vec<u8>) -> Result<Vec<String>> {
                     operand_data: OperandData::AccToMem(operation),
                 }
             }
+            OpCode::Arithmetic(ArithmeticOperation::ImmToRem) => {
+                let operation = arithmetic_operations::ImmToRm::parse_opcode_to_instruction(
+                    opcode,
+                    &mut reader,
+                )?;
+                DecodedInstruction {
+                    opcode: op_code,
+                    operand_data: OperandData::AOImmToRm(operation),
+                }
+            }
+            OpCode::Arithmetic(ArithmeticOperation::RmWithReg) => {
+                let operation = arithmetic_operations::RmWithReg::parse_opcode_to_instruction(
+                    opcode,
+                    &mut reader,
+                )?;
+                DecodedInstruction {
+                    opcode: op_code,
+                    operand_data: OperandData::AORmWithReg(operation),
+                }
+            }
+            OpCode::Arithmetic(ArithmeticOperation::ImmToAcc) => {
+                let operation = arithmetic_operations::ImmToAcc::parse_opcode_to_instruction(
+                    opcode,
+                    &mut reader,
+                )?;
+                DecodedInstruction {
+                    opcode: op_code,
+                    operand_data: OperandData::AOImmToAcc(operation),
+                }
+            }
             _ => {
                 error!("Unsupported opcode: {:02X}", opcode);
                 break;
@@ -400,4 +498,24 @@ pub fn decode_instructions(content: Vec<u8>) -> Result<Vec<String>> {
     }
 
     Ok(instructions)
+}
+
+pub fn parse_immediate(width: &Width, iter: &mut ByteIterator) -> Result<u16> {
+    match width {
+        Width::Byte => {
+            let imm_byte = iter
+                .next()
+                .ok_or_else(|| anyhow!("Expected immediate byte"))?;
+            Ok(*imm_byte as u16)
+        }
+        Width::Word => {
+            let imm_lo = iter
+                .next()
+                .ok_or_else(|| anyhow!("Expected low byte of immediate"))?;
+            let imm_hi = iter
+                .next()
+                .ok_or_else(|| anyhow!("Expected high byte of immediate"))?;
+            Ok(u16::from_le_bytes([*imm_lo, *imm_hi]))
+        }
+    }
 }

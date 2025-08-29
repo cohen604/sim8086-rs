@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, arg, command};
 
+mod arithmetic_operations;
 mod instructions_table;
 mod move_operations;
 

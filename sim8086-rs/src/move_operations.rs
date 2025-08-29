@@ -32,14 +32,11 @@ impl Display for RmToFromReg {
     }
 }
 
-impl Operation<RmToFromReg> for RmToFromReg {
+impl Operation for RmToFromReg {
     fn parse_opcode_to_instruction(
         opcode: &u8,
         iter: &mut ByteIterator,
-    ) -> anyhow::Result<RmToFromReg>
-    where
-        RmToFromReg: std::fmt::Display,
-    {
+    ) -> anyhow::Result<RmToFromReg> {
         let byte1 = opcode;
         let byte2 = iter.next().ok_or_else(|| anyhow!("Expected second byte"))?;
 
@@ -140,11 +137,11 @@ impl Display for ImmToReg {
     }
 }
 
-impl Operation<ImmToReg> for ImmToReg {
-    fn parse_opcode_to_instruction(opcode: &u8, iter: &mut ByteIterator) -> anyhow::Result<ImmToReg>
-    where
-        ImmToReg: std::fmt::Display,
-    {
+impl Operation for ImmToReg {
+    fn parse_opcode_to_instruction(
+        opcode: &u8,
+        iter: &mut ByteIterator,
+    ) -> anyhow::Result<ImmToReg> {
         let byte1 = opcode;
 
         let width = Width::parse((byte1 >> 3) & 0x1);
@@ -193,11 +190,11 @@ impl Display for ImmToRm {
     }
 }
 
-impl Operation<ImmToRm> for ImmToRm {
-    fn parse_opcode_to_instruction(opcode: &u8, iter: &mut ByteIterator) -> anyhow::Result<ImmToRm>
-    where
-        ImmToRm: std::fmt::Display,
-    {
+impl Operation for ImmToRm {
+    fn parse_opcode_to_instruction(
+        opcode: &u8,
+        iter: &mut ByteIterator,
+    ) -> anyhow::Result<ImmToRm> {
         let byte1 = opcode;
         let byte2 = iter.next().ok_or_else(|| anyhow!("Expected second byte"))?;
 
@@ -277,11 +274,11 @@ impl Display for MemToAcc {
     }
 }
 
-impl Operation<MemToAcc> for MemToAcc {
-    fn parse_opcode_to_instruction(opcode: &u8, iter: &mut ByteIterator) -> anyhow::Result<MemToAcc>
-    where
-        MemToAcc: std::fmt::Display,
-    {
+impl Operation for MemToAcc {
+    fn parse_opcode_to_instruction(
+        opcode: &u8,
+        iter: &mut ByteIterator,
+    ) -> anyhow::Result<MemToAcc> {
         let byte1 = opcode;
         let lo = iter
             .next()
@@ -312,11 +309,11 @@ impl Display for AccToMem {
     }
 }
 
-impl Operation<AccToMem> for AccToMem {
-    fn parse_opcode_to_instruction(opcode: &u8, iter: &mut ByteIterator) -> anyhow::Result<AccToMem>
-    where
-        AccToMem: Display,
-    {
+impl Operation for AccToMem {
+    fn parse_opcode_to_instruction(
+        opcode: &u8,
+        iter: &mut ByteIterator,
+    ) -> anyhow::Result<AccToMem> {
         let byte1 = opcode;
         let lo = iter
             .next()
