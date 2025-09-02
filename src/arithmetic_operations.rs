@@ -1,8 +1,5 @@
 use anyhow::anyhow;
-use std::{
-    f32::consts::PI,
-    fmt::{Display, write},
-};
+use std::fmt::Display;
 
 use crate::instructions_table::{Direction, Mode, Operation, Rm, Width, parse_immediate};
 
