@@ -5,6 +5,7 @@ use clap::{Parser, Subcommand, arg, command};
 
 mod arithmetic_operations;
 mod instructions_table;
+mod jump_operations;
 mod move_operations;
 
 #[derive(Parser)]

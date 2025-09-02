@@ -4,6 +4,7 @@ use tracing::error;
 
 use crate::{
     arithmetic_operations::{self, ArithmeticOperation},
+    jump_operations,
     move_operations::{AccToMem, ImmToReg, ImmToRm, MemToAcc, MoveInstruction, RmToFromReg},
 };
 
@@ -19,6 +20,7 @@ pub trait Operation {
 pub enum OpCode {
     Mov(MoveInstruction),
     Arithmetic(ArithmeticOperation),
+    Jump,
 }
 
 impl Display for OpCode {
@@ -26,6 +28,7 @@ impl Display for OpCode {
         let opcode_str = match self {
             OpCode::Mov(_) => "mov",
             OpCode::Arithmetic(_) => "",
+            OpCode::Jump => "",
         };
         write!(f, "{}", opcode_str)
     }
@@ -46,6 +49,7 @@ impl OpCode {
             0x4..=0x5 | 0x2C..=0x2D | 0x3C..=0x3D => {
                 OpCode::Arithmetic(ArithmeticOperation::ImmToAcc)
             }
+            0x70..=0x7F | 0xE0..=0xE3 => OpCode::Jump,
             _ => {
                 error!("Unsupported opcode: {:02X}", opcode);
                 panic!("Unsupported opcode");
@@ -389,6 +393,7 @@ pub enum OperandData {
     AOImmToRm(arithmetic_operations::ImmToRm),
     AORmWithReg(arithmetic_operations::RmWithReg),
     AOImmToAcc(arithmetic_operations::ImmToAcc),
+    ReturnCall(jump_operations::ReturnCall),
 }
 
 impl Display for OperandData {
@@ -402,6 +407,7 @@ impl Display for OperandData {
             OperandData::AOImmToRm(data) => write!(f, "{}", data),
             OperandData::AORmWithReg(data) => write!(f, "{}", data),
             OperandData::AOImmToAcc(data) => write!(f, "{}", data),
+            OperandData::ReturnCall(data) => write!(f, "{}", data),
         }
     }
 }
@@ -480,6 +486,14 @@ pub fn decode_instructions(content: Vec<u8>) -> Result<Vec<String>> {
                 DecodedInstruction {
                     opcode: op_code,
                     operand_data: OperandData::AOImmToAcc(operation),
+                }
+            }
+            OpCode::Jump => {
+                let operation =
+                    jump_operations::ReturnCall::parse_opcode_to_instruction(opcode, &mut reader)?;
+                DecodedInstruction {
+                    opcode: op_code,
+                    operand_data: OperandData::ReturnCall(operation),
                 }
             }
             _ => {
