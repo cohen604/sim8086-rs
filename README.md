@@ -13,3 +13,6 @@ Has just a long list of the same kind of `mov` operations like in `Listing 37`
 Those were hard!!! I had some difficulty on deciding which way to go to be able to fetch different length of bytes because each
 operation requires different length according to the first or second byte of data, and not all of them need the second byte to understand this.
 I though tgoing the State Machine route but decided to just pass a `&mut` reference to the iterator and the parsers were responsible to fetch as many bytes as they needed before returning the decoded operation.
+
+## Listing 43
+I've added a simple Simulation for the registers `Immediate to Register` `mov` operation, this is not exhaustive and doesn't take into account Low's and High's bit in `ax, bx, cx and dx` registers.

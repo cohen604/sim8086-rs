@@ -6,6 +6,7 @@ use crate::{
     arithmetic_operations::{self, ArithmeticOperation},
     jump_operations,
     move_operations::{AccToMem, ImmToReg, ImmToRm, MemToAcc, MoveInstruction, RmToFromReg},
+    simulator::{Simulate, Simulator},
 };
 
 pub type ByteIterator<'a> = std::slice::Iter<'a, u8>;
@@ -110,7 +111,7 @@ impl Mode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub enum Reg {
     Ax,
     Al,
@@ -412,9 +413,29 @@ impl Display for OperandData {
     }
 }
 
-pub fn decode_instructions(content: Vec<u8>) -> Result<Vec<String>> {
+impl OperandData {
+    pub fn simulate(&self, state: &mut Simulator) -> Result<()> {
+        match self {
+            Self::ImmToReg(data) => data.simulate(state),
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl DecodedInstruction {
+    pub fn simulate(&self, state: &mut Simulator) -> Result<()> {
+        self.operand_data.simulate(state)
+    }
+}
+
+pub fn decode_instructions(content: Vec<u8>, sim: bool) -> Result<Vec<String>> {
     let mut reader = content.iter();
     let mut instructions: Vec<String> = Vec::new();
+    let mut state: Option<Simulator> = if sim {
+        Some(Simulator::default())
+    } else {
+        None
+    };
     loop {
         let opcode = reader.next();
         if opcode.is_none() {
@@ -505,6 +526,9 @@ pub fn decode_instructions(content: Vec<u8>) -> Result<Vec<String>> {
             "Decoded instruction: {} {}",
             instruction.opcode, instruction.operand_data
         );
+        if sim {
+            instruction.simulate(state.as_mut().unwrap());
+        }
         instructions.push(format!(
             "{} {}",
             instruction.opcode, instruction.operand_data

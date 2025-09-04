@@ -7,6 +7,7 @@ mod arithmetic_operations;
 mod instructions_table;
 mod jump_operations;
 mod move_operations;
+mod simulator;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -20,7 +21,10 @@ enum Commands {
     Decode {
         #[arg(short, long)]
         file: PathBuf,
+        #[arg(short, long)]
         output: Option<PathBuf>,
+        #[arg(short, long)]
+        sim: bool,
     },
 }
 
@@ -29,8 +33,8 @@ fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Some(Commands::Decode { file, output }) => {
-            let decoded_content = decode(file).expect("Decoding failed");
+        Some(Commands::Decode { file, output, sim }) => {
+            let decoded_content = decode(file, *sim).expect("Decoding failed");
             if let Some(output_path) = output {
                 save_to_file(decoded_content, output_path).expect("Failed to save to file");
             } else {
@@ -43,12 +47,12 @@ fn main() {
     }
 }
 
-fn decode(file: &PathBuf) -> Result<Vec<String>> {
+fn decode(file: &PathBuf, sim: bool) -> Result<Vec<String>> {
     let content = std::fs::read(file).expect("Failed to read file");
     for byte in &content {
         println!("{:08b} ", byte);
     }
-    let decoded_instructions = instructions_table::decode_instructions(content)?;
+    let decoded_instructions = instructions_table::decode_instructions(content, sim)?;
 
     Ok(decoded_instructions)
 }

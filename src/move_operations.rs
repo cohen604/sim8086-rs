@@ -1,7 +1,11 @@
-use anyhow::anyhow;
+use anyhow::{Ok, anyhow};
 use std::fmt::Display;
+use tracing::instrument;
 
-use crate::instructions_table::{ByteIterator, Direction, Mode, Operation, Rm, Width};
+use crate::{
+    instructions_table::{ByteIterator, Direction, Mode, Operation, Rm, Width},
+    simulator::Simulate,
+};
 
 #[derive(Debug)]
 pub enum MoveInstruction {
@@ -170,6 +174,19 @@ impl Operation for ImmToReg {
             reg,
             immediate,
         })
+    }
+}
+
+impl Simulate for ImmToReg {
+    fn simulate(&self, state: &mut crate::simulator::Simulator) -> anyhow::Result<()> {
+        match &self.reg {
+            Rm::Reg(reg) => {
+                state.modify_reg(reg, self.immediate)?;
+                println!("{:?}", state);
+                Ok(())
+            }
+            Rm::Memory(_) => unimplemented!(),
+        }
     }
 }
 
