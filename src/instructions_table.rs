@@ -1,6 +1,7 @@
 use anyhow::{Result, anyhow};
 use std::fmt::Display;
 use tracing::error;
+use tracing_subscriber::registry::Data;
 
 use crate::{
     arithmetic_operations::{self, ArithmeticOperation},
@@ -418,6 +419,7 @@ impl OperandData {
         match self {
             Self::ImmToReg(data) => data.simulate(state),
             Self::AORmWithReg(data) => data.simulate(state),
+            Self::AOImmToRm(data) => data.simulate(state),
             _ => unimplemented!(),
         }
     }

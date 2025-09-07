@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{Ok, anyhow};
 use std::fmt::Display;
 
 use crate::{
@@ -103,6 +103,25 @@ impl Operation for ImmToRm {
     }
 }
 
+impl Simulate for ImmToRm {
+    fn simulate(&self, state: &mut crate::simulator::Simulator) -> anyhow::Result<()> {
+        let rm = match &self.rm {
+            Rm::Reg(reg) => reg,
+            Rm::Memory(_memory_field) => unimplemented!(),
+        };
+        let operand = Operand::Data(self.immediate);
+
+        match self.operation {
+            ArithmeticType::Add => state.add(rm.clone(), operand)?,
+            ArithmeticType::Sub => state.sub(rm.clone(), operand)?,
+            ArithmeticType::Cmp => state.cmp(rm.clone(), operand)?,
+        }
+        println!("{:?}", state);
+
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub struct RmWithReg {
     operation: ArithmeticType,
@@ -152,29 +171,29 @@ impl Simulate for RmWithReg {
     fn simulate(&self, state: &mut crate::simulator::Simulator) -> anyhow::Result<()> {
         let reg = match &self.reg {
             Rm::Reg(reg) => reg,
-            Rm::Memory(memory_field) => unimplemented!(),
+            Rm::Memory(_memory_field) => unimplemented!(),
         };
         let rm = match &self.rm {
             Rm::Reg(reg) => reg,
-            Rm::Memory(memory_field) => unimplemented!(),
+            Rm::Memory(_memory_field) => unimplemented!(),
         };
         match self.direction {
-            Direction::ToReg => match self.operation {
-                ArithmeticType::Add => todo!(),
-                ArithmeticType::Sub => {
-                    let operand = Operand::Reg(rm.clone());
-                    state.sub(reg.clone(), operand)?;
+            Direction::ToReg => {
+                let operand = Operand::Reg(rm.clone());
+                match self.operation {
+                    ArithmeticType::Add => todo!(),
+                    ArithmeticType::Sub => state.sub(reg.clone(), operand)?,
+                    ArithmeticType::Cmp => state.cmp(reg.clone(), operand)?,
                 }
-                ArithmeticType::Cmp => todo!(),
-            },
-            Direction::ToRM => match self.operation {
-                ArithmeticType::Add => todo!(),
-                ArithmeticType::Sub => {
-                    let operand = Operand::Reg(reg.clone());
-                    state.sub(rm.clone(), operand)?;
+            }
+            Direction::ToRM => {
+                let operand = Operand::Reg(reg.clone());
+                match self.operation {
+                    ArithmeticType::Add => todo!(),
+                    ArithmeticType::Sub => state.sub(rm.clone(), operand)?,
+                    ArithmeticType::Cmp => state.cmp(rm.clone(), operand)?,
                 }
-                ArithmeticType::Cmp => todo!(),
-            },
+            }
         };
         println!("{:?}", state);
         Ok(())

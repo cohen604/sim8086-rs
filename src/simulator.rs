@@ -1,5 +1,6 @@
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use std::collections::HashMap;
+use tracing::info;
 
 use crate::{instructions_table::Reg, models::flag::Flag};
 
@@ -41,6 +42,20 @@ impl Simulator {
         Ok(())
     }
 
+    pub fn add(&mut self, reg: Reg, operand: Operand) -> Result<()> {
+        let operand = match operand {
+            Operand::Reg(reg) => *self.registers.get(&reg).unwrap(),
+            Operand::Data(data) => data,
+        };
+        let reg_data = *self.registers.get(&reg).unwrap();
+        let result = reg_data + operand;
+
+        self.set_flags(result)?;
+        self.registers.insert(reg, result);
+
+        Ok(())
+    }
+
     pub fn sub(&mut self, reg: Reg, operand: Operand) -> Result<()> {
         let operand = match operand {
             Operand::Reg(reg) => *self.registers.get(&reg).unwrap(),
@@ -51,6 +66,20 @@ impl Simulator {
 
         self.set_flags(result)?;
         self.registers.insert(reg, result);
+
+        Ok(())
+    }
+
+    pub fn cmp(&mut self, reg: Reg, operand: Operand) -> Result<()> {
+        let operand = match operand {
+            Operand::Reg(reg) => *self.registers.get(&reg).unwrap(),
+            Operand::Data(data) => data,
+        };
+
+        let reg_data = *self.registers.get(&reg).unwrap();
+        let result = reg_data - operand;
+
+        self.set_flags(result)?;
 
         Ok(())
     }
