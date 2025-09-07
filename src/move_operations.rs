@@ -181,7 +181,7 @@ impl Simulate for ImmToReg {
     fn simulate(&self, state: &mut crate::simulator::Simulator) -> anyhow::Result<()> {
         match &self.reg {
             Rm::Reg(reg) => {
-                state.modify_reg(reg, self.immediate)?;
+                state.modify_reg(reg.clone(), self.immediate)?;
                 println!("{:?}", state);
                 Ok(())
             }

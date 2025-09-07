@@ -111,7 +111,7 @@ impl Mode {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub enum Reg {
     Ax,
     Al,
@@ -417,6 +417,7 @@ impl OperandData {
     pub fn simulate(&self, state: &mut Simulator) -> Result<()> {
         match self {
             Self::ImmToReg(data) => data.simulate(state),
+            Self::AORmWithReg(data) => data.simulate(state),
             _ => unimplemented!(),
         }
     }

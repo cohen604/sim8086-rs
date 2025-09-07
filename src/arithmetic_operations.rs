@@ -1,7 +1,10 @@
 use anyhow::anyhow;
 use std::fmt::Display;
 
-use crate::instructions_table::{Direction, Mode, Operation, Rm, Width, parse_immediate};
+use crate::{
+    instructions_table::{Direction, Mode, Operation, Rm, Width, parse_immediate},
+    simulator::{Operand, Simulate},
+};
 
 #[derive(Debug)]
 pub enum ArithmeticOperation {
@@ -142,6 +145,39 @@ impl Operation for RmWithReg {
             reg,
             rm,
         })
+    }
+}
+
+impl Simulate for RmWithReg {
+    fn simulate(&self, state: &mut crate::simulator::Simulator) -> anyhow::Result<()> {
+        let reg = match &self.reg {
+            Rm::Reg(reg) => reg,
+            Rm::Memory(memory_field) => unimplemented!(),
+        };
+        let rm = match &self.rm {
+            Rm::Reg(reg) => reg,
+            Rm::Memory(memory_field) => unimplemented!(),
+        };
+        match self.direction {
+            Direction::ToReg => match self.operation {
+                ArithmeticType::Add => todo!(),
+                ArithmeticType::Sub => {
+                    let operand = Operand::Reg(rm.clone());
+                    state.sub(reg.clone(), operand)?;
+                }
+                ArithmeticType::Cmp => todo!(),
+            },
+            Direction::ToRM => match self.operation {
+                ArithmeticType::Add => todo!(),
+                ArithmeticType::Sub => {
+                    let operand = Operand::Reg(reg.clone());
+                    state.sub(rm.clone(), operand)?;
+                }
+                ArithmeticType::Cmp => todo!(),
+            },
+        };
+        println!("{:?}", state);
+        Ok(())
     }
 }
 
