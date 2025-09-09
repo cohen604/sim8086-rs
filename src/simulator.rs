@@ -37,8 +37,14 @@ impl Default for Simulator {
 }
 
 impl Simulator {
-    pub fn modify_reg(&mut self, reg: Reg, data: u16) -> Result<()> {
-        self.registers.insert(reg, data);
+    pub fn modify_reg(&mut self, reg: Reg, data: Operand) -> Result<()> {
+        match data {
+            Operand::Reg(rm) => {
+                let data = self.registers.get(&rm).unwrap();
+                self.registers.insert(reg, *data)
+            }
+            Operand::Data(data) => self.registers.insert(reg, data),
+        };
         Ok(())
     }
 
@@ -62,7 +68,7 @@ impl Simulator {
             Operand::Data(data) => data,
         };
         let reg_data = *self.registers.get(&reg).unwrap();
-        let result = reg_data - operand;
+        let result = reg_data.wrapping_sub(operand);
 
         self.set_flags(result)?;
         self.registers.insert(reg, result);

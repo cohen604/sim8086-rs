@@ -4,7 +4,7 @@ use tracing::instrument;
 
 use crate::{
     instructions_table::{ByteIterator, Direction, Mode, Operation, Rm, Width},
-    simulator::Simulate,
+    simulator::{Operand, Simulate},
 };
 
 #[derive(Debug)]
@@ -125,6 +125,26 @@ impl Operation for RmToFromReg {
     }
 }
 
+impl Simulate for RmToFromReg {
+    fn simulate(&self, state: &mut crate::simulator::Simulator) -> anyhow::Result<()> {
+        let reg = match &self.reg {
+            Rm::Reg(reg) => reg,
+            Rm::Memory(_) => unimplemented!(),
+        };
+
+        let rm = match &self.rm {
+            Rm::Reg(reg) => reg,
+            Rm::Memory(_) => unimplemented!(),
+        };
+        match self.direction {
+            Direction::ToReg => state.modify_reg(reg.clone(), Operand::Reg(rm.clone()))?,
+            Direction::ToRM => state.modify_reg(rm.clone(), Operand::Reg(reg.clone()))?,
+        };
+        println!("{:?}", state);
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub struct ImmToReg {
     width: Width,
@@ -181,7 +201,7 @@ impl Simulate for ImmToReg {
     fn simulate(&self, state: &mut crate::simulator::Simulator) -> anyhow::Result<()> {
         match &self.reg {
             Rm::Reg(reg) => {
-                state.modify_reg(reg.clone(), self.immediate)?;
+                state.modify_reg(reg.clone(), Operand::Data(self.immediate))?;
                 println!("{:?}", state);
                 Ok(())
             }

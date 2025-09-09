@@ -418,6 +418,7 @@ impl OperandData {
     pub fn simulate(&self, state: &mut Simulator) -> Result<()> {
         match self {
             Self::ImmToReg(data) => data.simulate(state),
+            Self::RmToFromReg(data) => data.simulate(state),
             Self::AORmWithReg(data) => data.simulate(state),
             Self::AOImmToRm(data) => data.simulate(state),
             _ => unimplemented!(),
