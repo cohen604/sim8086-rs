@@ -1,6 +1,5 @@
 use anyhow::{Ok, Result};
 use std::collections::HashMap;
-use tracing::info;
 
 use crate::{instructions_table::Reg, models::flag::Flag};
 

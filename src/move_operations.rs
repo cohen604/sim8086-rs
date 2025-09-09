@@ -1,6 +1,5 @@
 use anyhow::{Ok, anyhow};
 use std::fmt::Display;
-use tracing::instrument;
 
 use crate::{
     instructions_table::{ByteIterator, Direction, Mode, Operation, Rm, Width},
