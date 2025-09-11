@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
-use anyhow::anyhow;
+use anyhow::{Ok, anyhow};
 
-use crate::instructions_table::Operation;
+use crate::{instructions_table::Operation, simulator::Simulate};
 
 #[derive(Debug)]
 pub enum JumpType {
@@ -88,6 +88,8 @@ impl JumpType {
 pub struct ReturnCall {
     operation: JumpType,
     inc: i8,
+
+    pub op_size: u8,
 }
 
 impl Display for ReturnCall {
@@ -108,6 +110,44 @@ impl Operation for ReturnCall {
         let byte2 = iter.next().ok_or(anyhow!("Expecting IP-INC8 byte"))?;
         let inc = *byte2 as i8;
 
-        Ok(ReturnCall { operation, inc })
+        Ok(ReturnCall {
+            operation,
+            inc,
+            op_size: 2,
+        })
+    }
+}
+
+impl Simulate for ReturnCall {
+    fn simulate(&self, state: &mut crate::simulator::Simulator) -> anyhow::Result<()> {
+        match self.operation {
+            JumpType::Jo => todo!(),
+            JumpType::Jno => todo!(),
+            JumpType::JbJnaeJc => todo!(),
+            JumpType::JnbJaeJnc => todo!(),
+            JumpType::JeJz => todo!(),
+            JumpType::JneJnz => {
+                if !state.is_zero_flag_set()? {
+                    state.modify_pi(self.inc)?;
+                }
+            }
+            JumpType::JbeJna => todo!(),
+            JumpType::JnbeJa => todo!(),
+            JumpType::Js => todo!(),
+            JumpType::Jns => todo!(),
+            JumpType::JpJpe => todo!(),
+            JumpType::JnpJpo => todo!(),
+            JumpType::JlJnge => todo!(),
+            JumpType::JnlJge => todo!(),
+            JumpType::JleJng => todo!(),
+            JumpType::JnleJg => todo!(),
+            JumpType::Loop => todo!(),
+            JumpType::LoopzLoope => todo!(),
+            JumpType::LoopnzLoopne => todo!(),
+            JumpType::Jcxz => todo!(),
+        }
+
+        println!("{:?}", state);
+        Ok(())
     }
 }

@@ -1,12 +1,45 @@
 use anyhow::{Ok, Result};
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
-use crate::{instructions_table::Reg, models::flag::Flag};
+use crate::{
+    instructions_table::{DecodedInstruction, Reg},
+    models::flag::Flag,
+};
+
+#[derive(Debug)]
+pub struct Orchestrator {
+    pub instructions: HashMap<u32, DecodedInstruction>,
+    state: Simulator,
+}
+
+impl Default for Orchestrator {
+    fn default() -> Self {
+        let instructions: HashMap<u32, DecodedInstruction> = HashMap::new();
+        let state = Simulator::default();
+
+        Self {
+            instructions,
+            state,
+        }
+    }
+}
+
+impl Orchestrator {
+    pub fn simulate(mut self) -> Result<()> {
+        while let Some(instruction) = self.instructions.get(&self.state.ip) {
+            self.state.ip += instruction.get_op_size() as u32;
+            instruction.simulate(&mut self.state)?;
+        }
+
+        Ok(())
+    }
+}
 
 #[derive(Debug)]
 pub struct Simulator {
     registers: HashMap<Reg, u16>,
     flags: HashMap<Flag, u8>,
+    ip: u32,
 }
 
 #[derive(Debug)]
@@ -31,7 +64,11 @@ impl Default for Simulator {
         flags.insert(Flag::Sign, 0x0);
         flags.insert(Flag::Zero, 0x0);
 
-        Self { registers, flags }
+        Self {
+            registers,
+            flags,
+            ip: 0,
+        }
     }
 }
 
@@ -105,6 +142,16 @@ impl Simulator {
         }
 
         Ok(())
+    }
+
+    pub fn modify_pi(&mut self, inc: i8) -> Result<()> {
+        let ip = self.ip as i32 + inc as i32;
+        self.ip = ip as u32;
+        Ok(())
+    }
+
+    pub fn is_zero_flag_set(&self) -> Result<bool> {
+        Ok(*self.flags.get(&Flag::Zero).unwrap() == 1)
     }
 }
 

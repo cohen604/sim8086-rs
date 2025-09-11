@@ -49,6 +49,8 @@ pub struct ImmToRm {
     rm: Rm,
     immediate: u16,
     sign: u8,
+
+    pub op_size: u8,
 }
 
 impl Display for ImmToRm {
@@ -67,6 +69,7 @@ impl Operation for ImmToRm {
     ) -> anyhow::Result<ImmToRm> {
         let byte1 = opcode;
         let byte2 = iter.next().ok_or_else(|| anyhow!("Expected second byte"))?;
+        let mut op_size = 2;
 
         let width = Width::parse(byte1 & 0x1);
         let sign = (byte1 >> 1) & 0x1;
@@ -80,12 +83,14 @@ impl Operation for ImmToRm {
                 let imm_hi = iter
                     .next()
                     .ok_or_else(|| anyhow!("Expected high byte of immediate"))?;
+                op_size += 2;
                 u16::from_le_bytes([*imm_lo, *imm_hi])
             }
             _ => {
                 let imm_byte = iter
                     .next()
                     .ok_or_else(|| anyhow!("Expected immediate byte"))?;
+                op_size += 1;
                 *imm_byte as u16
             }
         };
@@ -99,6 +104,7 @@ impl Operation for ImmToRm {
             rm,
             immediate,
             sign,
+            op_size,
         })
     }
 }

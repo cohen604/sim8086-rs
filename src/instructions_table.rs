@@ -6,7 +6,7 @@ use crate::{
     arithmetic_operations::{self, ArithmeticOperation},
     jump_operations,
     move_operations::{AccToMem, ImmToReg, ImmToRm, MemToAcc, MoveInstruction, RmToFromReg},
-    simulator::{Simulate, Simulator},
+    simulator::{Orchestrator, Simulate, Simulator},
 };
 
 pub type ByteIterator<'a> = std::slice::Iter<'a, u8>;
@@ -420,7 +420,22 @@ impl OperandData {
             Self::RmToFromReg(data) => data.simulate(state),
             Self::AORmWithReg(data) => data.simulate(state),
             Self::AOImmToRm(data) => data.simulate(state),
+            Self::ReturnCall(data) => data.simulate(state),
             _ => unimplemented!(),
+        }
+    }
+
+    pub fn get_op_size(&self) -> u8 {
+        match self {
+            OperandData::RmToFromReg(rm_to_from_reg) => todo!(),
+            OperandData::ImmToReg(imm_to_reg) => imm_to_reg.op_size,
+            OperandData::ImmToRm(imm_to_rm) => todo!(),
+            OperandData::MemToAcc(mem_to_acc) => todo!(),
+            OperandData::AccToMem(acc_to_mem) => todo!(),
+            OperandData::AOImmToRm(imm_to_rm) => imm_to_rm.op_size,
+            OperandData::AORmWithReg(rm_with_reg) => todo!(),
+            OperandData::AOImmToAcc(imm_to_acc) => todo!(),
+            OperandData::ReturnCall(return_call) => return_call.op_size,
         }
     }
 }
@@ -429,16 +444,21 @@ impl DecodedInstruction {
     pub fn simulate(&self, state: &mut Simulator) -> Result<()> {
         self.operand_data.simulate(state)
     }
+
+    pub fn get_op_size(&self) -> u8 {
+        self.operand_data.get_op_size()
+    }
 }
 
 pub fn decode_instructions(content: Vec<u8>, sim: bool) -> Result<Vec<String>> {
     let mut reader = content.iter();
     let mut instructions: Vec<String> = Vec::new();
-    let mut state: Option<Simulator> = if sim {
-        Some(Simulator::default())
+    let mut orchestrator: Option<Orchestrator> = if sim {
+        Some(Orchestrator::default())
     } else {
         None
     };
+    let mut current_byte: u32 = 0;
     loop {
         let opcode = reader.next();
         if opcode.is_none() {
@@ -529,13 +549,26 @@ pub fn decode_instructions(content: Vec<u8>, sim: bool) -> Result<Vec<String>> {
             "Decoded instruction: {} {}",
             instruction.opcode, instruction.operand_data
         );
-        if sim {
-            instruction.simulate(state.as_mut().unwrap());
-        }
+
         instructions.push(format!(
             "{} {}",
             instruction.opcode, instruction.operand_data
         ));
+
+        if sim {
+            let next_byte = current_byte + instruction.get_op_size() as u32;
+            orchestrator
+                .as_mut()
+                .unwrap()
+                .instructions
+                .insert(current_byte, instruction);
+
+            current_byte = next_byte;
+        }
+    }
+
+    if sim {
+        orchestrator.unwrap().simulate()?;
     }
 
     Ok(instructions)

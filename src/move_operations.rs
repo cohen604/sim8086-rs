@@ -149,6 +149,8 @@ pub struct ImmToReg {
     width: Width,
     reg: Rm,
     immediate: u16,
+
+    pub op_size: u8,
 }
 
 impl Display for ImmToReg {
@@ -166,6 +168,7 @@ impl Operation for ImmToReg {
         iter: &mut ByteIterator,
     ) -> anyhow::Result<ImmToReg> {
         let byte1 = opcode;
+        let mut op_size: u8 = 1;
 
         let width = Width::parse((byte1 >> 3) & 0x1);
         let reg = Rm::decode_register_with_width(&width, byte1 & 0x7);
@@ -175,6 +178,7 @@ impl Operation for ImmToReg {
                 let imm_byte = iter
                     .next()
                     .ok_or_else(|| anyhow!("Expected immediate byte"))?;
+                op_size += 1;
                 *imm_byte as u16
             }
             Width::Word => {
@@ -184,6 +188,7 @@ impl Operation for ImmToReg {
                 let imm_hi = iter
                     .next()
                     .ok_or_else(|| anyhow!("Expected high byte of immediate"))?;
+                op_size += 2;
                 ((*imm_hi as u16) << 8) | (*imm_lo as u16)
             }
         };
@@ -192,6 +197,7 @@ impl Operation for ImmToReg {
             width,
             reg,
             immediate,
+            op_size,
         })
     }
 }
