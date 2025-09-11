@@ -245,7 +245,24 @@ impl Operation for ImmToRm {
         let rm_byte = byte2 & 0x7;
 
         let rm = match mode {
-            Mode::Memory => Rm::decode_memory_addressing(&mode, rm_byte, None, None),
+            Mode::Memory => {
+                if rm_byte == 0x6 {
+                    let displacement_lo = iter
+                        .next()
+                        .ok_or_else(|| anyhow!("Expected low byte of direct address"))?;
+                    let displacement_hi = iter
+                        .next()
+                        .ok_or_else(|| anyhow!("Expected high byte of direct address"))?;
+                    Rm::decode_memory_addressing(
+                        &mode,
+                        rm_byte,
+                        Some(*displacement_lo),
+                        Some(*displacement_hi),
+                    )
+                } else {
+                    Rm::decode_memory_addressing(&mode, rm_byte, None, None)
+                }
+            }
             Mode::Memory8BitDisplacement => {
                 let displacement_lo = iter
                     .next()
