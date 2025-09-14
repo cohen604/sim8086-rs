@@ -1,5 +1,5 @@
 use anyhow::{Ok, Result};
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 
 use crate::{
     instructions_table::{DecodedInstruction, Reg, Width},
@@ -65,7 +65,7 @@ impl Default for Simulator {
         flags.insert(Flag::Sign, 0x0);
         flags.insert(Flag::Zero, 0x0);
 
-        let mut memory = vec![0; 1024];
+        let memory = vec![0; 1024];
 
         Self {
             registers,

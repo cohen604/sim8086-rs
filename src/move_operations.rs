@@ -1,5 +1,5 @@
 use anyhow::{Ok, anyhow};
-use std::{fmt::Display, mem};
+use std::fmt::Display;
 
 use crate::{
     instructions_table::{ByteIterator, Clocks, Direction, Mode, Operation, Rm, Width},
