@@ -24,6 +24,8 @@ pub struct RmToFromReg {
     mode: Mode,
     reg: Rm,
     rm: Rm,
+
+    pub op_size: u8,
 }
 
 impl Display for RmToFromReg {
@@ -42,6 +44,7 @@ impl Operation for RmToFromReg {
     ) -> anyhow::Result<RmToFromReg> {
         let byte1 = opcode;
         let byte2 = iter.next().ok_or_else(|| anyhow!("Expected second byte"))?;
+        let mut op_size = 2;
 
         let direction = Direction::parse((byte1 >> 1) & 0x1);
         let width = Width::parse(byte1 & 0x1);
@@ -59,6 +62,7 @@ impl Operation for RmToFromReg {
                     let displacement_hi = iter
                         .next()
                         .ok_or_else(|| anyhow!("Expected high byte of direct address"))?;
+                    op_size += 2;
                     Rm::decode_memory_addressing(
                         &mode,
                         rm_byte,
@@ -74,12 +78,14 @@ impl Operation for RmToFromReg {
                     mode,
                     reg,
                     rm,
+                    op_size,
                 })
             }
             Mode::Memory8BitDisplacement => {
                 let displacement_lo = iter
                     .next()
                     .ok_or_else(|| anyhow!("Expected displacement byte"))?;
+                op_size += 1;
                 let rm = Rm::decode_memory_addressing(&mode, rm_byte, Some(*displacement_lo), None);
                 Ok(RmToFromReg {
                     direction,
@@ -87,6 +93,7 @@ impl Operation for RmToFromReg {
                     mode,
                     reg,
                     rm,
+                    op_size,
                 })
             }
             Mode::Memory16BitDisplacement => {
@@ -96,6 +103,7 @@ impl Operation for RmToFromReg {
                 let displacement_hi = iter
                     .next()
                     .ok_or_else(|| anyhow!("Expected high byte of displacement"))?;
+                op_size += 2;
                 let rm = Rm::decode_memory_addressing(
                     &mode,
                     rm_byte,
@@ -108,6 +116,7 @@ impl Operation for RmToFromReg {
                     mode,
                     reg,
                     rm,
+                    op_size,
                 })
             }
             _ => {
@@ -118,6 +127,7 @@ impl Operation for RmToFromReg {
                     mode,
                     reg,
                     rm,
+                    op_size,
                 })
             }
         }
@@ -133,7 +143,16 @@ impl Simulate for RmToFromReg {
 
         let rm = match &self.rm {
             Rm::Reg(reg) => reg,
-            Rm::Memory(_) => unimplemented!(),
+            Rm::Memory(mem) => match mem.split_regs() {
+                (None, None) => todo!(),
+                (None, Some(mem_loc)) => {
+                    state.load_from_mem(mem_loc, reg.clone(), &self.width)?;
+                    println!("{:?}", state);
+                    return Ok(());
+                }
+                (Some(_), None) => todo!(),
+                (Some(_), Some(_)) => todo!(),
+            },
         };
         match self.direction {
             Direction::ToReg => state.modify_reg(reg.clone(), Operand::Reg(rm.clone()))?,
@@ -221,6 +240,8 @@ pub struct ImmToRm {
     mode: Mode,
     rm: Rm,
     immediate: u16,
+
+    pub op_size: u8,
 }
 
 impl Display for ImmToRm {
@@ -239,6 +260,7 @@ impl Operation for ImmToRm {
     ) -> anyhow::Result<ImmToRm> {
         let byte1 = opcode;
         let byte2 = iter.next().ok_or_else(|| anyhow!("Expected second byte"))?;
+        let mut op_size = 2;
 
         let width = Width::parse(byte1 & 0x1);
         let mode = Mode::parse((byte2 >> 6) & 0x3);
@@ -253,6 +275,7 @@ impl Operation for ImmToRm {
                     let displacement_hi = iter
                         .next()
                         .ok_or_else(|| anyhow!("Expected high byte of direct address"))?;
+                    op_size += 2;
                     Rm::decode_memory_addressing(
                         &mode,
                         rm_byte,
@@ -267,6 +290,7 @@ impl Operation for ImmToRm {
                 let displacement_lo = iter
                     .next()
                     .ok_or_else(|| anyhow!("Expected displacement byte"))?;
+                op_size += 1;
                 Rm::decode_memory_addressing(&mode, rm_byte, Some(*displacement_lo), None)
             }
             Mode::Memory16BitDisplacement => {
@@ -276,6 +300,7 @@ impl Operation for ImmToRm {
                 let displacement_hi = iter
                     .next()
                     .ok_or_else(|| anyhow!("Expected high byte of displacement"))?;
+                op_size += 2;
                 Rm::decode_memory_addressing(
                     &mode,
                     rm_byte,
@@ -296,6 +321,7 @@ impl Operation for ImmToRm {
                 let imm_byte = iter
                     .next()
                     .ok_or_else(|| anyhow!("Expected immediate byte"))?;
+                op_size += 1;
                 *imm_byte as u16
             }
             Width::Word => {
@@ -305,6 +331,7 @@ impl Operation for ImmToRm {
                 let imm_hi = iter
                     .next()
                     .ok_or_else(|| anyhow!("Expected high byte of immediate"))?;
+                op_size += 2;
                 u16::from_le_bytes([*imm_lo, *imm_hi])
             }
         };
@@ -314,7 +341,35 @@ impl Operation for ImmToRm {
             mode,
             rm,
             immediate,
+            op_size,
         })
+    }
+}
+
+impl Simulate for ImmToRm {
+    fn simulate(&self, state: &mut crate::simulator::Simulator) -> anyhow::Result<()> {
+        match &self.rm {
+            Rm::Reg(reg) => todo!(),
+            Rm::Memory(memory_field) => match memory_field.split_regs() {
+                (None, None) => todo!(),
+                (None, Some(mem)) => {
+                    let immediate_bytes: [u8; 2] = self.immediate.to_be_bytes();
+                    state.save_to_mem(mem, immediate_bytes, &self.width)?;
+                }
+                (Some(_), None) => todo!(),
+                (Some(regs), Some(rm_data)) => {
+                    let immediate_bytes: [u8; 2] = self.immediate.to_be_bytes();
+                    let regs_loc: u16 = regs
+                        .iter()
+                        .map(|reg| state.get_reg_data(reg).unwrap())
+                        .sum();
+                    state.save_to_mem(regs_loc + rm_data, immediate_bytes, &self.width)?;
+                }
+            },
+        }
+
+        println!("{:?}", state);
+        Ok(())
     }
 }
 

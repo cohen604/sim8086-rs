@@ -16,3 +16,8 @@ I though tgoing the State Machine route but decided to just pass a `&mut` refere
 
 ## Listing 43
 I've added a simple Simulation for the registers `Immediate to Register` `mov` operation, this is not exhaustive and doesn't take into account Low's and High's bit in `ax, bx, cx and dx` registers.
+
+# Simulation
+
+For the last listings of part1 they are simulation and estimation tasks.
+I've added registers, flags and memory simulation. I still want to actually load the instructions to memory from the first byte to fully simulate reading the instructions for memory and running them. I haven't implemented the simulation for all cases, so you'll see a lot of `todo!` in the code because it's kind of a repeat for a lot of the simulation code and I wanted to just compile and check to see the homework checks are passing. Maybe in the future I'll implement them all.

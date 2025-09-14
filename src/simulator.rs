@@ -2,7 +2,7 @@ use anyhow::{Ok, Result};
 use std::{collections::HashMap, hash::Hash};
 
 use crate::{
-    instructions_table::{DecodedInstruction, Reg},
+    instructions_table::{DecodedInstruction, Reg, Width},
     models::flag::Flag,
 };
 
@@ -40,6 +40,7 @@ pub struct Simulator {
     registers: HashMap<Reg, u16>,
     flags: HashMap<Flag, u8>,
     ip: u32,
+    memory: Vec<u8>,
 }
 
 #[derive(Debug)]
@@ -64,10 +65,13 @@ impl Default for Simulator {
         flags.insert(Flag::Sign, 0x0);
         flags.insert(Flag::Zero, 0x0);
 
+        let mut memory = vec![0; 1024];
+
         Self {
             registers,
             flags,
             ip: 0,
+            memory,
         }
     }
 }
@@ -82,6 +86,45 @@ impl Simulator {
             Operand::Data(data) => self.registers.insert(reg, data),
         };
         Ok(())
+    }
+
+    pub fn save_to_mem(&mut self, mem_loc: u16, data: [u8; 2], width: &Width) -> Result<()> {
+        match width {
+            Width::Byte => todo!(),
+            Width::Word => {
+                let lo_loc = mem_loc;
+                let hi_loc = mem_loc + 0x1;
+
+                if let Some(mem) = self.memory.get_mut(lo_loc as usize) {
+                    println!("low: {}, index: {}", data[1], lo_loc);
+                    *mem = data[1]
+                }
+                if let Some(mem) = self.memory.get_mut(hi_loc as usize) {
+                    println!("high: {}, index: {}", data[0], hi_loc);
+                    *mem = data[0]
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn load_from_mem(&mut self, mem_loc: u16, reg: Reg, width: &Width) -> Result<()> {
+        match width {
+            Width::Byte => todo!(),
+            Width::Word => {
+                let lo_mem = self.memory.get(mem_loc as usize).unwrap();
+                let hi_mem = self.memory.get(mem_loc as usize + 1).unwrap();
+
+                let data = u16::from_le_bytes([*lo_mem, *hi_mem]);
+                self.modify_reg(reg, Operand::Data(data));
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn get_reg_data(&self, reg: &Reg) -> Result<u16> {
+        Ok(*self.registers.get(reg).unwrap())
     }
 
     pub fn add(&mut self, reg: Reg, operand: Operand) -> Result<()> {

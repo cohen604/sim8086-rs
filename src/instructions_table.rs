@@ -183,6 +183,37 @@ pub enum MemoryField {
     Bx16bitDisplacement(u16),
 }
 
+impl MemoryField {
+    pub fn split_regs(&self) -> (Option<Vec<Reg>>, Option<u16>) {
+        match self {
+            MemoryField::BxSi => (Some(vec![Reg::Bx, Reg::Si]), None),
+            MemoryField::BxDi => todo!(),
+            MemoryField::BpSi => todo!(),
+            MemoryField::BpDi => todo!(),
+            MemoryField::Si => todo!(),
+            MemoryField::Di => todo!(),
+            MemoryField::DirectAddress(data) => (None, Some(*data)),
+            MemoryField::Bx => (Some(vec![Reg::Bx]), None),
+            MemoryField::BxSi8bitDisplacement(_) => todo!(),
+            MemoryField::BxDi8bitDisplacement(_) => todo!(),
+            MemoryField::BpSi8bitDisplacement(_) => todo!(),
+            MemoryField::BpDi8bitDisplacement(_) => todo!(),
+            MemoryField::Si8bitDisplacement(_) => todo!(),
+            MemoryField::Di8bitDisplacement(_) => todo!(),
+            MemoryField::Bp8bitDisplacement(_) => todo!(),
+            MemoryField::Bx8bitDisplacement(data) => (Some(vec![Reg::Bx]), Some(*data as u16)),
+            MemoryField::BxSi16bitDisplacement(_) => todo!(),
+            MemoryField::BxDi16bitDisplacement(_) => todo!(),
+            MemoryField::BpSi16bitDisplacement(_) => todo!(),
+            MemoryField::BpDi16bitDisplacement(_) => todo!(),
+            MemoryField::Si16bitDisplacement(_) => todo!(),
+            MemoryField::Di16bitDisplacement(_) => todo!(),
+            MemoryField::Bp16bitDisplacement(_) => todo!(),
+            MemoryField::Bx16bitDisplacement(_) => todo!(),
+        }
+    }
+}
+
 impl Display for MemoryField {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mem_str = match self {
@@ -421,15 +452,16 @@ impl OperandData {
             Self::AORmWithReg(data) => data.simulate(state),
             Self::AOImmToRm(data) => data.simulate(state),
             Self::ReturnCall(data) => data.simulate(state),
+            Self::ImmToRm(data) => data.simulate(state),
             _ => unimplemented!(),
         }
     }
 
     pub fn get_op_size(&self) -> u8 {
         match self {
-            OperandData::RmToFromReg(rm_to_from_reg) => todo!(),
+            OperandData::RmToFromReg(rm_to_from_reg) => rm_to_from_reg.op_size,
             OperandData::ImmToReg(imm_to_reg) => imm_to_reg.op_size,
-            OperandData::ImmToRm(imm_to_rm) => todo!(),
+            OperandData::ImmToRm(imm_to_rm) => imm_to_rm.op_size,
             OperandData::MemToAcc(mem_to_acc) => todo!(),
             OperandData::AccToMem(acc_to_mem) => todo!(),
             OperandData::AOImmToRm(imm_to_rm) => imm_to_rm.op_size,
