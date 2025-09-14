@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow};
-use std::fmt::Display;
+use std::{fmt::Display, ops::Add};
 use tracing::error;
 
 use crate::{
@@ -210,6 +210,35 @@ impl MemoryField {
             MemoryField::Di16bitDisplacement(_) => todo!(),
             MemoryField::Bp16bitDisplacement(_) => todo!(),
             MemoryField::Bx16bitDisplacement(_) => todo!(),
+        }
+    }
+
+    pub fn get_estiamte(&self) -> Clocks {
+        match self {
+            MemoryField::BxSi => Clocks(7),
+            MemoryField::BxDi => Clocks(8),
+            MemoryField::BpSi => Clocks(8),
+            MemoryField::BpDi => Clocks(7),
+            MemoryField::Si => Clocks(5),
+            MemoryField::Di => Clocks(5),
+            MemoryField::DirectAddress(_) => Clocks(6),
+            MemoryField::Bx => Clocks(5),
+            MemoryField::BxSi8bitDisplacement(_) => Clocks(11),
+            MemoryField::BxDi8bitDisplacement(_) => Clocks(12),
+            MemoryField::BpSi8bitDisplacement(_) => Clocks(12),
+            MemoryField::BpDi8bitDisplacement(_) => Clocks(11),
+            MemoryField::Si8bitDisplacement(_) => Clocks(9),
+            MemoryField::Di8bitDisplacement(_) => Clocks(9),
+            MemoryField::Bp8bitDisplacement(_) => Clocks(9),
+            MemoryField::Bx8bitDisplacement(_) => Clocks(9),
+            MemoryField::BxSi16bitDisplacement(_) => Clocks(11),
+            MemoryField::BxDi16bitDisplacement(_) => Clocks(12),
+            MemoryField::BpSi16bitDisplacement(_) => Clocks(12),
+            MemoryField::BpDi16bitDisplacement(_) => Clocks(11),
+            MemoryField::Si16bitDisplacement(_) => Clocks(9),
+            MemoryField::Di16bitDisplacement(_) => Clocks(9),
+            MemoryField::Bp16bitDisplacement(_) => Clocks(9),
+            MemoryField::Bx16bitDisplacement(_) => Clocks(9),
         }
     }
 }
@@ -470,6 +499,20 @@ impl OperandData {
             OperandData::ReturnCall(return_call) => return_call.op_size,
         }
     }
+
+    pub fn get_estimate(&self) -> Clocks {
+        match self {
+            OperandData::RmToFromReg(rm_to_from_reg) => rm_to_from_reg.get_estiamte(),
+            OperandData::ImmToReg(imm_to_reg) => imm_to_reg.get_estimate(),
+            OperandData::ImmToRm(imm_to_rm) => todo!(),
+            OperandData::MemToAcc(mem_to_acc) => todo!(),
+            OperandData::AccToMem(acc_to_mem) => todo!(),
+            OperandData::AOImmToRm(imm_to_rm) => imm_to_rm.get_estimate(),
+            OperandData::AORmWithReg(rm_with_reg) => rm_with_reg.get_estimate(),
+            OperandData::AOImmToAcc(imm_to_acc) => todo!(),
+            OperandData::ReturnCall(return_call) => todo!(),
+        }
+    }
 }
 
 impl DecodedInstruction {
@@ -480,9 +523,35 @@ impl DecodedInstruction {
     pub fn get_op_size(&self) -> u8 {
         self.operand_data.get_op_size()
     }
+
+    pub fn get_estimate(&self) -> Clocks {
+        self.operand_data.get_estimate()
+    }
 }
 
-pub fn decode_instructions(content: Vec<u8>, sim: bool) -> Result<Vec<String>> {
+pub struct Clocks(u32);
+
+impl Clocks {
+    pub fn new(i: u32) -> Self {
+        Clocks(i)
+    }
+}
+
+impl Display for Clocks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} clocks", self.0)
+    }
+}
+
+impl Add for Clocks {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Clocks(self.0 + rhs.0)
+    }
+}
+
+pub fn decode_instructions(content: Vec<u8>, sim: bool, estimate: bool) -> Result<Vec<String>> {
     let mut reader = content.iter();
     let mut instructions: Vec<String> = Vec::new();
     let mut orchestrator: Option<Orchestrator> = if sim {
@@ -577,15 +646,18 @@ pub fn decode_instructions(content: Vec<u8>, sim: bool) -> Result<Vec<String>> {
                 break;
             }
         };
-        println!(
-            "Decoded instruction: {} {}",
-            instruction.opcode, instruction.operand_data
-        );
 
-        instructions.push(format!(
-            "{} {}",
-            instruction.opcode, instruction.operand_data
-        ));
+        let repr = if estimate {
+            let run_estimate = instruction.get_estimate();
+            format!(
+                "{} {} ; {}",
+                instruction.opcode, instruction.operand_data, run_estimate
+            )
+        } else {
+            format!("{} {}", instruction.opcode, instruction.operand_data)
+        };
+        println!("Decoded instruction: {}", repr);
+        instructions.push(repr);
 
         if sim {
             let next_byte = current_byte + instruction.get_op_size() as u32;

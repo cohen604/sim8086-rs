@@ -1,8 +1,8 @@
 use anyhow::{Ok, anyhow};
-use std::fmt::Display;
+use std::{fmt::Display, mem};
 
 use crate::{
-    instructions_table::{ByteIterator, Direction, Mode, Operation, Rm, Width},
+    instructions_table::{ByteIterator, Clocks, Direction, Mode, Operation, Rm, Width},
     simulator::{Operand, Simulate},
 };
 
@@ -163,6 +163,26 @@ impl Simulate for RmToFromReg {
     }
 }
 
+impl RmToFromReg {
+    pub fn get_estiamte(&self) -> Clocks {
+        match &self.rm {
+            Rm::Reg(_) => Clocks::new(2),
+            Rm::Memory(memory_field) => match self.direction {
+                Direction::ToReg => {
+                    let base_estimate = Clocks::new(8);
+                    let ea = memory_field.get_estiamte();
+                    base_estimate + ea
+                }
+                Direction::ToRM => {
+                    let base_estimate = Clocks::new(9);
+                    let ea = memory_field.get_estiamte();
+                    base_estimate + ea
+                }
+            },
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ImmToReg {
     width: Width,
@@ -231,6 +251,12 @@ impl Simulate for ImmToReg {
             }
             Rm::Memory(_) => unimplemented!(),
         }
+    }
+}
+
+impl ImmToReg {
+    pub fn get_estimate(&self) -> Clocks {
+        Clocks::new(4)
     }
 }
 

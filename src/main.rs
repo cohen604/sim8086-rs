@@ -24,8 +24,10 @@ enum Commands {
         file: PathBuf,
         #[arg(short, long)]
         output: Option<PathBuf>,
-        #[arg(short, long)]
+        #[arg(short, long, default_value_t = false)]
         sim: bool,
+        #[arg(short, long, default_value_t = false)]
+        estimate: bool,
     },
 }
 
@@ -34,8 +36,13 @@ fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Some(Commands::Decode { file, output, sim }) => {
-            let decoded_content = decode(file, *sim).expect("Decoding failed");
+        Some(Commands::Decode {
+            file,
+            output,
+            sim,
+            estimate,
+        }) => {
+            let decoded_content = decode(file, *sim, *estimate).expect("Decoding failed");
             if let Some(output_path) = output {
                 save_to_file(decoded_content, output_path).expect("Failed to save to file");
             } else {
@@ -48,12 +55,12 @@ fn main() {
     }
 }
 
-fn decode(file: &PathBuf, sim: bool) -> Result<Vec<String>> {
+fn decode(file: &PathBuf, sim: bool, estimate: bool) -> Result<Vec<String>> {
     let content = std::fs::read(file).expect("Failed to read file");
     for byte in &content {
         println!("{:08b} ", byte);
     }
-    let decoded_instructions = instructions_table::decode_instructions(content, sim)?;
+    let decoded_instructions = instructions_table::decode_instructions(content, sim, estimate)?;
 
     Ok(decoded_instructions)
 }

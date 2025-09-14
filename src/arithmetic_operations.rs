@@ -2,7 +2,7 @@ use anyhow::{Ok, anyhow};
 use std::fmt::Display;
 
 use crate::{
-    instructions_table::{Direction, Mode, Operation, Rm, Width, parse_immediate},
+    instructions_table::{Clocks, Direction, Mode, Operation, Rm, Width, parse_immediate},
     simulator::{Operand, Simulate},
 };
 
@@ -128,6 +128,19 @@ impl Simulate for ImmToRm {
     }
 }
 
+impl ImmToRm {
+    pub fn get_estimate(&self) -> Clocks {
+        match &self.rm {
+            Rm::Reg(reg) => Clocks::new(4),
+            Rm::Memory(memory_field) => {
+                let base_estimate = Clocks::new(17);
+                let ea = memory_field.get_estiamte();
+                base_estimate + ea
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct RmWithReg {
     operation: ArithmeticType,
@@ -203,6 +216,26 @@ impl Simulate for RmWithReg {
         };
         println!("{:?}", state);
         Ok(())
+    }
+}
+
+impl RmWithReg {
+    pub fn get_estimate(&self) -> Clocks {
+        match &self.rm {
+            Rm::Reg(reg) => Clocks::new(3),
+            Rm::Memory(memory_field) => match self.direction {
+                Direction::ToReg => {
+                    let base_estimate = Clocks::new(9);
+                    let ea = memory_field.get_estiamte();
+                    base_estimate + ea
+                }
+                Direction::ToRM => {
+                    let base_estimate = Clocks::new(16);
+                    let ea = memory_field.get_estiamte();
+                    base_estimate + ea
+                }
+            },
+        }
     }
 }
 
